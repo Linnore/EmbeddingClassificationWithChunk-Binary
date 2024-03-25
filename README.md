@@ -6,27 +6,32 @@
 
 ```bash
 
-python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb --device mps --model allenai/longformer-base-4096 --tiny_mode
+python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb  --model allenai/longformer-base-4096 --device mps --tiny_mode
 ```
+Other models:
+
+intfloat/multilingual-e5-large
+
+yiyanghkust/finbert-pretrain
 
 #### 3. Train Classifier
-
+The `dataset_dir` here should be an output_dir created by `ExtractEmbedding.py`.
 ```bash
 
-python SVM.py --dataset_dir ./dataset/imdb_pooling --exp_name pooling --model_dir ./model/SVM
+python SVM.py --dataset_dir ./dataset/imdb --exp_name SVM --model_dir ./model/
 ```
 
 ```bash
 
-python MLP.py --dataset_dir ./dataset/imdb_pooling --exp_name pooling --model_dir ./model/MLP --num_epochs 8
+python MLP.py --dataset_dir ./dataset/imdb --exp_name MLP --model_dir ./model/ --num_epochs 8
 ```
 
 #### 4. Prediction
 
 ```bash
-python SVM.py  --pred --dataset_dir ./dataset/imdb_pooling --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
+python SVM.py  --pred --dataset_dir ./dataset/imdb --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
 ```
 
 ```bash
-python MLP.py --pred --dataset_dir ./dataset/imdb_pooling --model_path ./model/MLP/pooling/MLP_TIME_STAMP.pt
+python MLP.py --pred --dataset_dir ./dataset/imdb --model_path ./model/MLP/pooling/MLP_TIME_STAMP.pt
 ```
