@@ -24,8 +24,6 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 input_len = input_ids.shape[1]
                 num_chunks = 0
                 
-                print("stride", stride)
-                
                 # First chunk
                 start_pos = 0
                 end_pos = max_token_len
@@ -33,7 +31,6 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 
                 # Middle chunks
                 while end_pos<=input_len:
-                    print(start_pos, end_pos)
                     output = model(
                         input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
                     embedding += output.last_hidden_state[:, 0, :]
@@ -45,13 +42,11 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 if end_pos > input_len:
                     end_pos = input_len
                     start_pos = max(0, end_pos - max_token_len)
-                    print(start_pos, end_pos)
                     output = model(
                         input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
                     embedding += output.last_hidden_state[:, 0, :]
                     num_chunks += 1
 
-                print(num_chunks)
                 embedding /= num_chunks
                 embedding_list.append(embedding.cpu())
                 cnt += 1
