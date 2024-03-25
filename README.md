@@ -6,9 +6,11 @@
 
 ```bash
 
-python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb  --model allenai/longformer-base-4096 --device mps --tiny_mode
+python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb_mini  --model intfloat/multilingual-e5-large --device mps --tiny_mode
 ```
 Other models:
+
+allenai/longformer-base-4096
 
 intfloat/multilingual-e5-large
 
@@ -18,18 +20,18 @@ yiyanghkust/finbert-pretrain
 The `dataset_dir` here should be an output_dir created by `ExtractEmbedding.py`.
 ```bash
 
-python SVM.py --dataset_dir ./dataset/imdb --exp_name SVM --model_dir ./model/
+python SVM.py --dataset_dir ./dataset/imdb_mini --exp_name SVM --model_dir ./model/
 ```
 
 ```bash
 
-python MLP.py --dataset_dir ./dataset/imdb --exp_name MLP --model_dir ./model/ --num_epochs 8
+python MLP.py --dataset_dir ./dataset/imdb_mini --exp_name MLP --model_dir ./model/ --num_epochs 8
 ```
 
 #### 4. Prediction
 
 ```bash
-python SVM.py  --pred --dataset_dir ./dataset/imdb --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
+python SVM.py  --pred --dataset_dir ./dataset/imdb_mini --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
 ```
 
 ```bash
