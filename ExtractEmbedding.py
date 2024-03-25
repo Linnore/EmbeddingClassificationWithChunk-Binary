@@ -159,17 +159,18 @@ def main(args=None):
     if rawdata_dir == 'imdb':
         rawdata = load_dataset(
             rawdata_dir, cache_dir=cache_dir, split="train+test")
-        unsupervisedData = load_dataset(
-            rawdata_dir, cache_dir=cache_dir, split="unsupervised")
+        if parser.unsupervised:
+            unsupervisedData = load_dataset(
+                rawdata_dir, cache_dir=cache_dir, split="unsupervised")
 
-        print(rawdata, unsupervisedData)
     else:
         try:
             rawdata_dir = parser.rawdata_dir
             raw_path = os.path.join(rawdata_dir, 'raw.csv')
             rawdata = load_dataset(
                 rawdata_dir, data_files={'raw': 'raw.csv', 'unsupervised': 'unsupervised.csv'})
-            unsupervisedData = rawdata['unsupervised.csv']
+            if parser.unsupervised:
+                unsupervisedData = rawdata['unsupervised.csv']
             rawdata = rawdata['raw']
         except:
             raise Exception("Fail to load " + raw_path + "!")
@@ -183,8 +184,9 @@ def main(args=None):
         print("Tiny mode enable.")
         rawdata = rawdata.shuffle(seed=118010142).select(
             range(int(0.001*len(rawdata))))
-        unsupervisedData = unsupervisedData.shuffle(seed=118010142).select(
-            range(int(0.001*len(unsupervisedData))))
+        if parser.unsupervised:
+            unsupervisedData = unsupervisedData.shuffle(seed=118010142).select(
+                range(int(0.001*len(unsupervisedData))))
 
     id2label = {0: 'NEGATIVE', 1: 'POSITIVE'}
     label2id = {'NEGATIVE': 0, 'POSITIVE': 1}
