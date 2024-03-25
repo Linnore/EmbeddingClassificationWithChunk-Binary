@@ -9,10 +9,11 @@ from datasets import load_dataset
 from tqdm import tqdm
 
 
-def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', device='cpu', max_token_len=512, embedding_size=1024):
+def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', device='cpu', max_token_len=512, embedding_size=1024, stride_ratio=0.2):
     embedding_list = []
     if strategy == 'pooling':
         print("Using strategy: avg_pooling among all chunks.")
+        stride = int(stride_ratio*max_token_len)
         with torch.no_grad():
             cnt = 0
             for text in tqdm(texts):
@@ -20,26 +21,37 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                     text, truncation=False, return_tensors='pt')
                 input_ids = tokenized_dict["input_ids"].to(device)
                 mask = tokenized_dict["attention_mask"].to(device)
-                num_chunks = (input_ids.shape[1]-1)//max_token_len + 1
-
-                embedding = torch.zeros((1, embedding_size)).to(device)
+                input_len = input_ids.shape[1]
+                num_chunks = 0
+                
+                print("stride", stride)
+                
+                # First chunk
                 start_pos = 0
-                end_pos = 0
-                for i in range(num_chunks):
-                    start_pos = end_pos
-                    if i == num_chunks-1:
-                        end_pos = input_ids.shape[1]
-                    else:
-                        end_pos += max_token_len
-                    if (end_pos-start_pos > 512):
-                        print(end_pos, start_pos)
-                    # print(start_pos, end_pos)
-
+                end_pos = max_token_len
+                embedding = torch.zeros((1, embedding_size)).to(device)
+                
+                # Middle chunks
+                while end_pos<=input_len:
+                    print(start_pos, end_pos)
                     output = model(
                         input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
-                    # embedding += output.pooler_output
                     embedding += output.last_hidden_state[:, 0, :]
+                    start_pos = end_pos - stride
+                    end_pos = start_pos + max_token_len
+                    num_chunks += 1
+                
+                # Last chunk may shift left (much longer left stride)
+                if end_pos > input_len:
+                    end_pos = input_len
+                    start_pos = max(0, end_pos - max_token_len)
+                    print(start_pos, end_pos)
+                    output = model(
+                        input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
+                    embedding += output.last_hidden_state[:, 0, :]
+                    num_chunks += 1
 
+                print(num_chunks)
                 embedding /= num_chunks
                 embedding_list.append(embedding.cpu())
                 cnt += 1
@@ -139,7 +151,7 @@ def main(args=None):
     )
     parser.add_argument(
         '--strategy', help="Strategy to of chunking. 'pooling': Construct the embedding by averaging among all chunks; 'first': Only use the first chunk; 'Last': Only use the last chunk.",
-        default="last"
+        default="pooling"
     )
     parser.add_argument(
         '--device', help="Accelerator device.", default='cpu'
