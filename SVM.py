@@ -56,7 +56,8 @@ def main(arg=None):
         time_stamp = os.path.split(model_path)[-1].split(".")[
             0].split("_")[-1]
 
-        X_unsupervised = pd.read_csv(os.path.join(dataset_dir, "unsupervised.csv")).values
+        X_unsupervised = pd.read_csv(os.path.join(
+            dataset_dir, "unsupervised.csv")).values
         y_pred = classifier.predict(X_unsupervised)
 
         output_dir = parser.output_dir
@@ -69,15 +70,13 @@ def main(arg=None):
         y_pred_df = pd.DataFrame(y_pred, columns=['pred'])
         y_pred_df.to_csv(pred_path, index=False)
         print("Prediction for unsupervised dataset saved as:", pred_path)
-        
+
         return
-    
-    
-    
+
     if not train_mode and not test_mode:
         train_mode = True
         test_mode = True
-    
+
     model_dir = parser.model_dir
     exp_name = parser.exp_name
     model_dir = os.path.join(model_dir, exp_name)
@@ -85,12 +84,12 @@ def main(arg=None):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     time_stamp = datetime.now().strftime("%b%d-%H-%M-%S")
-    
+
     train_data = pd.read_csv(os.path.join(dataset_dir, "train.csv"))
     X_train = train_data.iloc[:, 1:].values
     y_train = train_data.iloc[:, 0].values
     y_train = y_train.astype(int)
-    
+
     if train_mode:
         print("Training...")
         classifier = SVC(kernel="rbf", gamma="auto")
@@ -133,11 +132,6 @@ def main(arg=None):
         y_pred_df = pd.DataFrame(y_pred, columns=['pred'])
         y_pred_df.to_csv(pred_path, index=False)
         print("Prediction for test dataset saved as:", pred_path)
-        
-
-        
-        
-    
 
 
 if __name__ == "__main__":

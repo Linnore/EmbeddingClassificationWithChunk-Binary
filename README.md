@@ -6,7 +6,7 @@
 
 ```bash
 
-python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb --device mps
+python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb --device mps --model allenai/longformer-base-4096 --tiny_mode
 ```
 
 #### 3. Train Classifier
@@ -16,8 +16,17 @@ python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb --devi
 python SVM.py --dataset_dir ./dataset/imdb_pooling --exp_name pooling --model_dir ./model/SVM
 ```
 
+```bash
+
+python MLP.py --dataset_dir ./dataset/imdb_pooling --exp_name pooling --model_dir ./model/MLP --num_epochs 8
+```
+
 #### 4. Prediction
 
 ```bash
-python SVM.py --dataset_dir ./dataset/imdb_pooling --pred --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
+python SVM.py  --pred --dataset_dir ./dataset/imdb_pooling --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
+```
+
+```bash
+python MLP.py --pred --dataset_dir ./dataset/imdb_pooling --model_path ./model/MLP/pooling/MLP_TIME_STAMP.pt
 ```

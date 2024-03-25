@@ -4,17 +4,15 @@ import argparse
 import pandas as pd
 import numpy as np
 
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, AutoConfig
 from datasets import load_dataset
 from tqdm import tqdm
 
-MAX_TOKEN_LEN = 512
-EMBEDDING_SIZE = 1024
 
-
-def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', device='cpu'):
+def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', device='cpu', max_token_len=512, embedding_size=1024):
     embedding_list = []
     if strategy == 'pooling':
+        print("Using strategy: avg_pooling among all chunks.")
         with torch.no_grad():
             cnt = 0
             for text in tqdm(texts):
@@ -22,9 +20,9 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                     text, truncation=False, return_tensors='pt')
                 input_ids = tokenized_dict["input_ids"].to(device)
                 mask = tokenized_dict["attention_mask"].to(device)
-                num_chunks = (input_ids.shape[1]-1)//MAX_TOKEN_LEN + 1
+                num_chunks = (input_ids.shape[1]-1)//max_token_len + 1
 
-                embedding = torch.zeros((1, EMBEDDING_SIZE)).to(device)
+                embedding = torch.zeros((1, embedding_size)).to(device)
                 start_pos = 0
                 end_pos = 0
                 for i in range(num_chunks):
@@ -32,14 +30,16 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                     if i == num_chunks-1:
                         end_pos = input_ids.shape[1]
                     else:
-                        end_pos += MAX_TOKEN_LEN
+                        end_pos += max_token_len
                     if (end_pos-start_pos > 512):
                         print(end_pos, start_pos)
                     # print(start_pos, end_pos)
 
                     output = model(
                         input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
-                    embedding += output.pooler_output
+                    # embedding += output.pooler_output
+                    embedding += output.last_hidden_state[:, 0, :]
+
                 embedding /= num_chunks
                 embedding_list.append(embedding.cpu())
                 cnt += 1
@@ -48,6 +48,7 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                     break
     elif strategy == 'last':
         # Using the last chunk
+        print('Using default strategy: keeping the last chunk.')
         with torch.no_grad():
             cnt = 0
             for text in tqdm(texts):
@@ -56,12 +57,13 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 input_ids = tokenized_dict["input_ids"].to(device)
                 mask = tokenized_dict["attention_mask"].to(device)
                 end_pos = input_ids.shape[1]
-                start_pos = max(0, end_pos-MAX_TOKEN_LEN)
+                start_pos = max(0, end_pos-max_token_len)
 
                 output = model(
                     input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
-                embedding = output.pooler_output
-
+                # embedding = output.pooler_output
+                embedding = output.last_hidden_state[:, 0, :]
+                
                 embedding_list.append(embedding.cpu())
 
                 cnt += 1
@@ -69,8 +71,8 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 if cnt == first:
                     break
     elif strategy == 'first':
-        # Using the last chunk
-
+        # Using the first chunk
+        print('Using strategy: keeping the first chunk.')
         with torch.no_grad():
             cnt = 0
             for text in tqdm(texts):
@@ -79,11 +81,12 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
                 input_ids = tokenized_dict["input_ids"].to(device)
                 mask = tokenized_dict["attention_mask"].to(device)
                 start_pos = 0
-                end_pos = min(input_ids.shape[1], MAX_TOKEN_LEN)
+                end_pos = min(input_ids.shape[1], max_token_len)
 
                 output = model(
                     input_ids[:, start_pos:end_pos], mask[:, start_pos:end_pos])
-                embedding = output.pooler_output
+                # embedding = output.pooler_output
+                embedding = output.last_hidden_state[:, 0, :]
 
                 embedding_list.append(embedding.cpu())
 
@@ -97,11 +100,21 @@ def extract_embedding(texts, model, tokenizer, first=None, strategy='pooling', d
     return torch.cat(embedding_list)
 
 
-def save_to_csv(data, output_dir, name, unsupervised=False):
+def save_embeddings_to_csv(data, output_dir, name, unsupervised=False, embedding_size=1024):
     data_df = pd.DataFrame(data)
-    colnames = ['e{}'.format(i) for i in range(EMBEDDING_SIZE)]
+    colnames = ['e{}'.format(i) for i in range(embedding_size)]
     if not unsupervised:
         colnames.insert(0, 'label')
+    data_df.columns = colnames
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    data_df.to_csv(os.path.join(output_dir, name), index=False)
+
+
+def save_text_to_csv(data, output_dir, name):
+    data_df = pd.DataFrame(data)
+    colnames = ['text']
     data_df.columns = colnames
 
     if not os.path.exists(output_dir):
@@ -126,13 +139,16 @@ def main(args=None):
     )
     parser.add_argument(
         '--strategy', help="Strategy to of chunking. 'pooling': Construct the embedding by averaging among all chunks; 'first': Only use the first chunk; 'Last': Only use the last chunk.",
-        default="pooling"
+        default="last"
     )
     parser.add_argument(
         '--device', help="Accelerator device.", default='cpu'
     )
     parser.add_argument(
         '--unsupervised', help="Extract **ONLY** the embeddings of the text in unsupervised.csv.", action="store_true"
+    )
+    parser.add_argument(
+        '--model', help='HuggingFace pretrained model name.', default='intfloat/multilingual-e5-large'
     )
 
     parser = parser.parse_args()
@@ -145,7 +161,7 @@ def main(args=None):
             rawdata_dir, cache_dir=cache_dir, split="train+test")
         unsupervisedData = load_dataset(
             rawdata_dir, cache_dir=cache_dir, split="unsupervised")
-        
+
         print(rawdata, unsupervisedData)
     else:
         try:
@@ -173,25 +189,36 @@ def main(args=None):
     id2label = {0: 'NEGATIVE', 1: 'POSITIVE'}
     label2id = {'NEGATIVE': 0, 'POSITIVE': 1}
 
+    model_name = parser.model
     tokenizer = AutoTokenizer.from_pretrained(
-        'intfloat/multilingual-e5-large', cache_dir=cache_dir)
+        model_name, cache_dir=cache_dir)
     model = AutoModel.from_pretrained(
-        'intfloat/multilingual-e5-large', cache_dir=cache_dir, num_labels=2, label2id=label2id, id2label=id2label)
+        model_name, cache_dir=cache_dir, num_labels=2, label2id=label2id, id2label=id2label)
+    config = AutoConfig.from_pretrained(
+        model_name, cache_dir=cache_dir
+    ).to_dict()
+    max_token_len = config['max_position_embeddings'] - 2
+    embedding_size = config['hidden_size']
 
     device = parser.device
     model.to(device)
+    model.eval()
     print("Using device:", device)
 
     strategy = parser.strategy
-    
+
     if parser.unsupervised:
         embedding = extract_embedding(
-            unsupervisedData['text'], model=model, tokenizer=tokenizer, strategy=strategy, device=device
-        )
-        save_to_csv(embedding, output_dir, "unsupervised.csv", unsupervised=True)
+            unsupervisedData['text'], model=model, tokenizer=tokenizer, strategy=strategy,
+            device=device, max_token_len=max_token_len, embedding_size=embedding_size)
+        save_embeddings_to_csv(embedding, output_dir,
+                               "unsupervised.csv", unsupervised=True, embedding_size=embedding_size)
+        save_text_to_csv(
+            unsupervisedData['text'], output_dir, "raw_unsupervised.csv")
     else:
         embedding = extract_embedding(
-            rawdata['text'], model=model, tokenizer=tokenizer, strategy=strategy, device=device)
+            rawdata['text'], model=model, tokenizer=tokenizer, strategy=strategy,
+            device=device, max_token_len=max_token_len, embedding_size=embedding_size)
         label = rawdata['label']
         data = torch.cat((torch.tensor(label).unsqueeze(1), embedding), 1)
 
@@ -205,9 +232,16 @@ def main(args=None):
 
         train_data = data[train_idx, :]
         test_data = data[test_idx, :]
+        raw_text = pd.Series(rawdata['text'])
+        raw_train = raw_text[train_idx]
+        raw_test = raw_text[test_idx]
 
-        save_to_csv(train_data, output_dir, "train.csv")
-        save_to_csv(test_data, output_dir, "test.csv")
+        save_embeddings_to_csv(train_data, output_dir,
+                               "train.csv", embedding_size=embedding_size)
+        save_embeddings_to_csv(test_data, output_dir,
+                               "test.csv", embedding_size=embedding_size)
+        save_text_to_csv(raw_train, output_dir, "raw_train.csv")
+        save_text_to_csv(raw_test, output_dir, "raw_test.csv")
 
 
 if __name__ == "__main__":
