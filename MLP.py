@@ -200,7 +200,7 @@ def main(arg=None):
 
         # Use loss as the criterion
         if val_loss < best_metric:
-            best_metric = val_f1score
+            best_metric = val_loss
             best_model_state_dict = deepcopy(model.state_dict())
             report = classification_report(val_targets, val_preds)
 
