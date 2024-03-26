@@ -115,7 +115,7 @@ def save_embeddings_to_csv(data, output_dir, name, unsupervised=False, embedding
     data_df.columns = colnames
 
     if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
     data_df.to_csv(os.path.join(output_dir, name), index=False)
 
 
@@ -125,7 +125,7 @@ def save_text_to_csv(data, output_dir, name):
     data_df.columns = colnames
 
     if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
     data_df.to_csv(os.path.join(output_dir, name), index=False)
 
 
@@ -184,7 +184,7 @@ def main(args=None):
 
     output_dir = parser.output_dir
     if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
 
     tiny_mode = parser.tiny_mode
     if tiny_mode:
