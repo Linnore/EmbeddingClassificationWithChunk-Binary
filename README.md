@@ -10,7 +10,12 @@ The raw data file should contain only two columns: label, text. The label data f
 
 ```bash
 
-python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb_mini  --model intfloat/multilingual-e5-large --device mps --strategy c--tiny_mode
+python ExtractEmbedding.py --rawdata_dir imdb --output_dir ./dataset/imdb_mini  --model intfloat/multilingual-e5-large --device mps --strategy pooling --tiny_mode
+```
+
+```bash
+
+python ExtractEmbedding.py --unsupervised --rawdata_dir imdb --output_dir ./dataset/imdb_mini  --model intfloat/multilingual-e5-large --device mps --strategy pooling --tiny_mode 
 ```
 
 Note:
@@ -42,10 +47,10 @@ Note:
 Prediction requires an `unsupervised.csv` input file under dataset_dir.
 
 ```bash
-python SVM.py  --pred --dataset_dir ./dataset/imdb_mini --model_path ./model/SVM/pooling/SVM_TIME_STAMP.joblib
+python SVM.py  --pred --dataset_dir ./dataset/imdb_mini --model_path ./model/SVM/SVM_TIME_STAMP.joblib
 ```
 
 ```bash
-python MLP.py --pred --dataset_dir ./dataset/imdb_mini --model_path ./model/MLP/pooling/MLP_TIME_STAMP.pt
+python MLP.py --pred --dataset_dir ./dataset/imdb_mini --model_path ./model/MLP/MLP_TIME_STAMP.pt
 ```
 
