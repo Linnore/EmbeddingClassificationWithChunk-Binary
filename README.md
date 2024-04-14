@@ -1,5 +1,8 @@
 # Binary Classification using BERT-based Model with Chunking Option.
-
+#### 0. Requirement:
+```bash
+pip install torch, torchvision, scikit-learn, transformers, accelerate, datasets, evaluate, joblib, scipy, tensorboard, tqdm
+```
 #### 1. Prepare the raw data file `raw.csv` under the folder `/dataset/raw` 
 Skip this step for example run on IMDB.
 
@@ -23,9 +26,10 @@ Note:
  - Strategy "first" or "last" implements the same embedding extraction without chunking.
  - You can change `imdb` to your data folder prepared in step 1.
  - You can change to other BERT-based model available in Huggingface Hub or provide a local pretrained model directory as the --model.
-   - allenai/longformer-base-4096
+   - allenai/longformer-large-4096
    - intfloat/multilingual-e5-large
    - yiyanghkust/finbert-pretrain
+   - efederici/e5-base-multilingual-4096
   
 
 #### 3. Train Classifier
